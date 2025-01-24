@@ -5,8 +5,22 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from datetime import datetime, timedelta
-import japanize_matplotlib
-import glob
+
+# 日本語フォントの設定
+plt.rcParams['font.family'] = ['Hiragino Sans', 'Yu Gothic', 'Meiryo', 'IPAexGothic', 'IPAPGothic', 'VL PGothic', 'Noto Sans CJK JP']
+
+# フォールバックフォント設定
+import matplotlib as mpl
+mpl.rcParams['font.sans-serif'] = ['Hiragino Sans', 'Yu Gothic', 'Meiryo', 'IPAexGothic', 'IPAPGothic', 'VL PGothic', 'Noto Sans CJK JP']
+mpl.rcParams['axes.unicode_minus'] = False
+
+# フォントの確認
+print("利用可能なフォント:", mpl.font_manager.findSystemFonts())
+
+try:
+    import japanize_matplotlib
+except ImportError:
+    print("japanize_matplotlib could not be imported. Using default font settings.")
 
 class ATMDashboard:
     def __init__(self):
