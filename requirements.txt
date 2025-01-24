@@ -2,8 +2,4 @@ streamlit==1.31.1
 pandas==2.2.0
 numpy==1.26.3
 matplotlib==3.8.2
-seaborn==0.13.2
-japanize-matplotlib==1.1.3
-python-dateutil==2.8.2
-pytz==2024.1
-fonts-noto-cjk 
+seaborn==0.13.2 

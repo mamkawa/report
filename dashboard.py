@@ -6,21 +6,20 @@ import seaborn as sns
 import os
 from datetime import datetime, timedelta
 
-# 日本語フォントの設定
-plt.rcParams['font.family'] = ['Hiragino Sans', 'Yu Gothic', 'Meiryo', 'IPAexGothic', 'IPAPGothic', 'VL PGothic', 'Noto Sans CJK JP']
+# 基本的なフォント設定
+plt.rcParams['font.family'] = 'sans-serif'
+plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
 
-# フォールバックフォント設定
-import matplotlib as mpl
-mpl.rcParams['font.sans-serif'] = ['Hiragino Sans', 'Yu Gothic', 'Meiryo', 'IPAexGothic', 'IPAPGothic', 'VL PGothic', 'Noto Sans CJK JP']
-mpl.rcParams['axes.unicode_minus'] = False
-
-# フォントの確認
-print("利用可能なフォント:", mpl.font_manager.findSystemFonts())
-
-try:
-    import japanize_matplotlib
-except ImportError:
-    print("japanize_matplotlib could not be imported. Using default font settings.")
+# 日本語の曜日マッピング
+WEEKDAY_MAP = {
+    'Monday': '月',
+    'Tuesday': '火',
+    'Wednesday': '水',
+    'Thursday': '木',
+    'Friday': '金',
+    'Saturday': '土',
+    'Sunday': '日'
+}
 
 class ATMDashboard:
     def __init__(self):
@@ -51,17 +50,6 @@ class ATMDashboard:
         branch_codes = ['00512', '00524', '00525', '00609', '00616', 
                        '00643', '00669', '00748', '00796']
         
-        # 曜日の変換辞書を追加
-        weekday_map = {
-            'Monday': '月',
-            'Tuesday': '火',
-            'Wednesday': '水',
-            'Thursday': '木',
-            'Friday': '金',
-            'Saturday': '土',
-            'Sunday': '日'
-        }
-        
         for code in branch_codes:
             try:
                 # ATM精算データ
@@ -73,7 +61,7 @@ class ATMDashboard:
                     print("列名一覧:", atm_df.columns.tolist())
                     
                     atm_df['日付'] = pd.to_datetime(atm_df['日付'].astype(str), format='%Y%m%d')
-                    atm_df['曜日'] = atm_df['日付'].dt.day_name().map(weekday_map)
+                    atm_df['曜日'] = atm_df['日付'].dt.day_name().map(WEEKDAY_MAP)
                     atm_df['時刻'] = pd.to_datetime(atm_df['時刻'].astype(str).str.zfill(6), format='%H%M%S').dt.time
                     
                     # 金種データの列を特定
