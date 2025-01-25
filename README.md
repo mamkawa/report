@@ -13,8 +13,8 @@ ATMの現金フローを分析し、可視化するためのStreamlitダッシ�
 
 1. リポジトリのクローン
 ```bash
-git clone [リポジトリURL]
-cd ATM_master
+git clone https://github.com/mamkawa/atm-dashboard.git
+cd atm-dashboard
 ```
 
 2. Python仮想環境の作成と有効化
