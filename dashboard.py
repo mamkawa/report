@@ -5,11 +5,16 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from datetime import datetime, timedelta
-import japanize_matplotlib  # 日本語フォント対応のため追加
+import japanize_matplotlib
 
-# 基本的なフォント設定
-plt.rcParams['font.family'] = 'IPAexGothic'  # 日本語フォントに変更
-plt.rcParams['axes.unicode_minus'] = False    # マイナス記号の文字化け防止
+# フォント設定を強化
+plt.rcParams['font.family'] = ['IPAexGothic', 'MS Gothic', 'Yu Gothic']
+plt.rcParams['axes.unicode_minus'] = False
+plt.rcParams['font.size'] = 12
+plt.rcParams['axes.labelsize'] = 12
+plt.rcParams['xtick.labelsize'] = 10
+plt.rcParams['ytick.labelsize'] = 10
+plt.rcParams['legend.fontsize'] = 10
 
 # 日本語の曜日マッピング
 WEEKDAY_MAP = {
