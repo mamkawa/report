@@ -5,10 +5,11 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 from datetime import datetime, timedelta
+import japanize_matplotlib  # 日本語フォント対応のため追加
 
 # 基本的なフォント設定
-plt.rcParams['font.family'] = 'sans-serif'
-plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+plt.rcParams['font.family'] = 'IPAexGothic'  # 日本語フォントに変更
+plt.rcParams['axes.unicode_minus'] = False    # マイナス記号の文字化け防止
 
 # 日本語の曜日マッピング
 WEEKDAY_MAP = {
@@ -803,8 +804,8 @@ def main():
         )
         
         # グローバルなフォント設定
-        plt.rcParams['font.family'] = 'sans-serif'
-        plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans']
+        plt.rcParams['font.family'] = 'IPAexGothic'
+        plt.rcParams['axes.unicode_minus'] = False
         
         # セッションステートの初期化
         if 'initialized' not in st.session_state:
