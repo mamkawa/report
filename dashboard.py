@@ -33,6 +33,10 @@ class ATMDashboard:
             self.base_dir = os.getcwd()
             print(f"作業ディレクトリ: {self.base_dir}")
             
+            # 支店コードの定義
+            self.branch_codes = ['00512', '00524', '00525', '00609', '00616', 
+                               '00643', '00669', '00748', '00796']
+            
             # 金種の定義
             self.bills = {
                 '10000': '10000円札',
@@ -51,10 +55,12 @@ class ATMDashboard:
             }
             
             self.branch_data = {}
+            self.cash_flow_data = {}  # 現金フローデータを保存
             
             # データの読み込みを試行
             try:
                 self.load_data()
+                self.load_cash_flow_data()  # 現金フローデータの読み込み
                 print("データ読み込み完了")
             except Exception as e:
                 print(f"データ読み込みエラー: {str(e)}")
@@ -66,18 +72,14 @@ class ATMDashboard:
             
         except Exception as e:
             print(f"初期化エラー: {str(e)}")
-            # 最低限の初期化を確保
             self.branch_data = {}
+            self.cash_flow_data = {}
             self.create_demo_data()
             self.setup_page()
 
     def load_data(self):
         """データの読み込み"""
-        branch_codes = ['00512', '00524', '00525', '00609', '00616', 
-                       '00643', '00669', '00748', '00796']
-        
-        data_loaded = False
-        for code in branch_codes:
+        for code in self.branch_codes:
             try:
                 # ATM精算データ
                 atm_files = [f for f in os.listdir(self.base_dir) if f.startswith(f"{code}_ATM精算")]
@@ -117,15 +119,126 @@ class ATMDashboard:
                         'bill_cols': bill_cols,
                         'coin_cols': coin_cols
                     }
-                    data_loaded = True
                     print(f"支店{code}のデータを読み込みました")
                     
             except Exception as e:
                 print(f"支店{code}のデータ読み込みでエラー: {str(e)}")
                 continue
         
-        if not data_loaded:
+        if not self.branch_data:
             raise Exception("データファイルが見つかりませんでした。")
+
+    def load_cash_flow_data(self):
+        """現金フローデータの読み込み"""
+        for code in self.branch_codes:
+            try:
+                data_frames = {}
+                
+                # 各データタイプの読み込み
+                file_patterns = {
+                    'pos_withdrawal': f"{code}_元金補充POSレジ出金確定データ.csv",
+                    'bank_deposit': f"{code}_銀行預入出金確定データ.csv",
+                    'bank_exchange': f"{code}_銀行両替金入金確定データ.csv",
+                    'atm_settlement': f"{code}_ATM精算POSレジ自動釣銭機確定データ.csv"
+                }
+                
+                for key, filename in file_patterns.items():
+                    try:
+                        file_path = os.path.join(self.base_dir, filename)
+                        if os.path.exists(file_path):
+                            print(f"読み込み中: {file_path}")
+                            df = pd.read_csv(file_path, encoding='cp932')
+                            
+                            # 日付の変換
+                            if '日付' in df.columns:
+                                df['日付'] = pd.to_datetime(df['日付'].astype(str).str.strip(), format='%Y%m%d')
+                            
+                            # 金種関連の列名を正規化
+                            amount_cols = [col for col in df.columns if ('枚数' in col or '金額' in col)]
+                            print(f"検出された金種関連の列: {amount_cols}")
+                            
+                            # 金種ごとの列名を変更
+                            for col in amount_cols:
+                                if '枚数' in col:
+                                    col_clean = col.replace(' ', '')  # スペースを除去
+                                    for value in list(self.bills.keys()) + list(self.coins.keys()):
+                                        if str(value) in col_clean:
+                                            if key == 'pos_withdrawal':
+                                                new_col = f'出金枚数_{value}円'
+                                            elif key == 'bank_deposit':
+                                                new_col = f'預入枚数_{value}円'
+                                            elif key == 'bank_exchange':
+                                                new_col = f'両替枚数_{value}円'
+                                            elif key == 'atm_settlement':
+                                                new_col = f'精算枚数_{value}円'
+                                            
+                                            df[new_col] = df[col]
+                                            print(f"列名を変更: {col} -> {new_col}")
+                                            break
+                            
+                            data_frames[key] = df
+                        else:
+                            print(f"ファイルが見つかりません: {filename}")
+                            
+                    except Exception as e:
+                        print(f"ファイル {filename} の読み込みエラー: {str(e)}")
+                        continue
+                
+                if data_frames:
+                    self.cash_flow_data[code] = data_frames
+                    print(f"支店{code}の現金フローデータを読み込みました")
+                else:
+                    print(f"支店{code}の現金フローデータが読み込めませんでした")
+            
+            except Exception as e:
+                print(f"支店{code}の現金フローデータ読み込みエラー: {str(e)}")
+                continue
+        
+        if not self.cash_flow_data:
+            print("現金フローデータが読み込めませんでした。デモデータを使用します。")
+            self.create_demo_cash_flow_data()
+
+    def create_demo_cash_flow_data(self):
+        """デモの現金フローデータを作成"""
+        print("現金フローデモデータを作成中...")
+        
+        for code in self.branch_codes:
+            # 日付範囲の設定
+            dates = pd.date_range(start='2023-11-01', end='2024-01-31')
+            n_rows = len(dates)
+            
+            # 基本データフレームの作成
+            base_df = pd.DataFrame({'日付': dates})
+            
+            # 各種データの作成
+            data_frames = {}
+            
+            # 元金補充POSレジ出金データ
+            pos_withdrawal = base_df.copy()
+            for value in list(self.bills.keys()) + list(self.coins.keys()):
+                pos_withdrawal[f'出金枚数_{value}円'] = np.random.poisson(10, n_rows)
+            data_frames['pos_withdrawal'] = pos_withdrawal
+            
+            # 銀行預入出金データ
+            bank_deposit = base_df.copy()
+            for value in list(self.bills.keys()) + list(self.coins.keys()):
+                bank_deposit[f'預入枚数_{value}円'] = np.random.poisson(5, n_rows)
+            data_frames['bank_deposit'] = bank_deposit
+            
+            # 銀行両替金入金データ
+            bank_exchange = base_df.copy()
+            for value in list(self.bills.keys()) + list(self.coins.keys()):
+                bank_exchange[f'両替枚数_{value}円'] = np.random.poisson(3, n_rows)
+            data_frames['bank_exchange'] = bank_exchange
+            
+            # ATM精算POSレジデータ
+            atm_settlement = base_df.copy()
+            for value in list(self.bills.keys()) + list(self.coins.keys()):
+                atm_settlement[f'精算枚数_{value}円'] = np.random.poisson(8, n_rows)
+            data_frames['atm_settlement'] = atm_settlement
+            
+            self.cash_flow_data[code] = data_frames
+            print(f"支店{code}の現金フローデモデータを作成しました")
 
     def setup_page(self):
         """ページの基本設定"""
@@ -144,7 +257,7 @@ class ATMDashboard:
             # ページ選択
             self.page = st.sidebar.radio(
                 'ページを選択してください',
-                ['概要', '金種別分析', '支店間比較'],
+                ['概要', '金種別分析', '支店間比較', '現金フロー分析'],
                 key='page_selector',
                 label_visibility='collapsed'
             )
@@ -584,7 +697,7 @@ class ATMDashboard:
                 col = f'ATM現金（手入力以外）入金（{bill}円）枚数'
                 if col in df.columns:
                     # 日付と曜日を結合
-                    df['date_str'] = df['日付'].dt.strftime('%Y-%m-%d') + '(' + df['曜日'].str[0] + ')'
+                    df['date_str'] = df['日付'].dt.strftime('%Y-%m-%d') + '(' + df['曜日'] + ')'
                     daily_avg = df.groupby('date_str')[col].mean()
                     ax.plot(daily_avg.index, daily_avg.values, marker='o', label=f'{bill}円札')
             
@@ -642,7 +755,7 @@ class ATMDashboard:
             plt.tight_layout()
             st.pyplot(fig)
 
-            # 硬貨種別の推移グラフのデータソース説明
+            # 硬貨の推移グラフのデータソース説明
             st.markdown("""
             **データソース（硬貨種別の推移）**:
             - 対象データ: ATM現金入金取引データ
@@ -747,15 +860,145 @@ class ATMDashboard:
             
             print(f"支店{code}のデモデータを作成しました")
 
+    def show_cash_flow(self):
+        """現金フロー分析ページの表示"""
+        st.title('現金フロー分析')
+        
+        try:
+            # 支店選択
+            selected_branch = st.selectbox(
+                '支店を選択してください',
+                self.branch_codes
+            )
+            
+            # 期間選択
+            start_date = pd.Timestamp('2023-11-01')
+            end_date = pd.Timestamp('2024-01-31')
+            
+            if selected_branch in self.cash_flow_data:
+                data = self.cash_flow_data[selected_branch]
+                
+                # 日付でフィルタリング
+                filtered_data = {}
+                for key in data:
+                    df = data[key].copy()  # データのコピーを作成
+                    df['日付'] = pd.to_datetime(df['日付'])  # 日付を確実にdatetime型に変換
+                    filtered_data[key] = df[
+                        (df['日付'] >= start_date) & 
+                        (df['日付'] <= end_date)
+                    ]
+                
+                # 現金フローの計算
+                st.subheader('現金フロー計算')
+                
+                # 紙幣と硬貨の選択
+                money_type = st.radio('金種タイプ', ['紙幣', '硬貨'])
+                
+                if money_type == '紙幣':
+                    denominations = self.bills
+                else:
+                    denominations = self.coins
+                
+                # 各金種ごとの計算
+                for value, label in denominations.items():
+                    st.write(f'### {label}の流れ')
+                    
+                    # 日次の現金フロー計算
+                    date_range = pd.date_range(start_date, end_date)
+                    flow_df = pd.DataFrame(index=date_range)
+                    flow_df.index.name = '日付'
+                    
+                    # ①元金補充POSレジ出金
+                    if 'pos_withdrawal' in filtered_data:
+                        pos_withdrawal_col = f'出金枚数_{value}円'
+                        if pos_withdrawal_col in filtered_data['pos_withdrawal'].columns:
+                            daily_withdrawal = filtered_data['pos_withdrawal'].groupby('日付')[pos_withdrawal_col].sum()
+                            flow_df['①補充'] = daily_withdrawal
+                    
+                    # ②銀行預入出金
+                    if 'bank_deposit' in filtered_data:
+                        bank_deposit_col = f'預入枚数_{value}円'
+                        if bank_deposit_col in filtered_data['bank_deposit'].columns:
+                            daily_deposit = filtered_data['bank_deposit'].groupby('日付')[bank_deposit_col].sum()
+                            flow_df['②預入'] = daily_deposit
+                    
+                    # ③銀行両替金入金
+                    if 'bank_exchange' in filtered_data:
+                        bank_exchange_col = f'両替枚数_{value}円'
+                        if bank_exchange_col in filtered_data['bank_exchange'].columns:
+                            daily_exchange = filtered_data['bank_exchange'].groupby('日付')[bank_exchange_col].sum()
+                            flow_df['③両替'] = daily_exchange
+                    
+                    # ④ATM精算POSレジ
+                    if 'atm_settlement' in filtered_data:
+                        atm_settlement_col = f'精算枚数_{value}円'
+                        if atm_settlement_col in filtered_data['atm_settlement'].columns:
+                            daily_settlement = filtered_data['atm_settlement'].groupby('日付')[atm_settlement_col].sum()
+                            flow_df['④精算'] = daily_settlement
+                    
+                    # 欠損値を0で埋める
+                    flow_df = flow_df.fillna(0)
+                    
+                    # ⑤合計（①-②+③-④）
+                    flow_df['⑤合計'] = flow_df['①補充'] - flow_df['②預入'] + flow_df['③両替'] - flow_df['④精算']
+                    
+                    # グラフの描画
+                    fig, ax = plt.subplots(figsize=(15, 6))
+                    for col in ['①補充', '②預入', '③両替', '④精算', '⑤合計']:
+                        ax.plot(flow_df.index, flow_df[col], label=col, marker='o')
+                    
+                    ax.set_xlabel('日付')
+                    ax.set_ylabel('枚数')
+                    ax.set_title(f'{label}の現金フロー')
+                    ax.legend()
+                    plt.grid(True)
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+                    st.pyplot(fig)
+                    plt.close()
+                    
+                    # データテーブルの表示
+                    st.write('日次データ')
+                    st.dataframe(flow_df)
+                    
+                    # 基本統計量
+                    st.write('基本統計量')
+                    st.dataframe(flow_df.describe())
+                    
+                    # 翌日の釣銭予測
+                    st.write('### 釣銭予測')
+                    # 移動平均による予測
+                    flow_df['予測値'] = flow_df['⑤合計'].rolling(window=7, min_periods=1).mean()
+                    
+                    # 予測グラフ
+                    fig, ax = plt.subplots(figsize=(15, 6))
+                    ax.plot(flow_df.index, flow_df['⑤合計'], label='実績値', marker='o')
+                    ax.plot(flow_df.index, flow_df['予測値'], label='予測値（7日移動平均）', linestyle='--')
+                    
+                    ax.set_xlabel('日付')
+                    ax.set_ylabel('枚数')
+                    ax.set_title(f'{label}の釣銭予測')
+                    ax.legend()
+                    plt.grid(True)
+                    plt.xticks(rotation=45)
+                    plt.tight_layout()
+                    st.pyplot(fig)
+                    plt.close()
+            
+            else:
+                st.warning(f"支店{selected_branch}のデータが見つかりません。")
+        
+        except Exception as e:
+            st.error(f"現金フロー分析中にエラーが発生しました: {str(e)}")
+            print(f"エラーの詳細: {str(e)}")
+
     def run(self):
         """ダッシュボードを実行"""
         try:
-            # データの存在確認
             if not self.branch_data:
                 print("データが存在しないため、デモデータを作成します")
                 self.create_demo_data()
             
-            # 利用可能な支店コードの確認
             available_branches = list(self.branch_data.keys())
             if not available_branches:
                 st.error("利用可能な支店データがありません。")
@@ -763,7 +1006,6 @@ class ATMDashboard:
             
             print(f"利用可能な支店: {available_branches}")
             
-            # ページに応じた表示
             if self.page == '概要':
                 print("概要ページを表示します")
                 self.show_overview()
@@ -773,6 +1015,9 @@ class ATMDashboard:
             elif self.page == '支店間比較':
                 print("支店間比較ページを表示します")
                 self.show_comparison()
+            elif self.page == '現金フロー分析':
+                print("現金フロー分析ページを表示します")
+                self.show_cash_flow()
             else:
                 print(f"不明なページが選択されました: {self.page}")
                 st.error("無効なページが選択されました。")
@@ -792,6 +1037,8 @@ class ATMDashboard:
                     self.show_money_analysis()
                 elif self.page == '支店間比較':
                     self.show_comparison()
+                elif self.page == '現金フロー分析':
+                    self.show_cash_flow()
                     
             except Exception as e2:
                 print(f"デモデータでの実行時エラー: {str(e2)}")
