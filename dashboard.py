@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 import japanize_matplotlib
 
 # フォント設定を更新
-plt.rcParams['font.family'] = 'MS Gothic'  # IPAexGothicをMS Gothicに変更
-plt.rcParams['font.sans-serif'] = ['MS Gothic', 'IPAexGothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
+plt.rcParams['font.family'] = 'IPAexGothic'  # MS Gothicから変更
+plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'MS Gothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.size'] = 12
 plt.rcParams['axes.labelsize'] = 12
@@ -1119,8 +1119,8 @@ def main():
         )
         
         # グローバルなフォント設定を更新
-        plt.rcParams['font.family'] = 'MS Gothic'
-        plt.rcParams['font.sans-serif'] = ['MS Gothic', 'IPAexGothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
+        plt.rcParams['font.family'] = 'IPAexGothic'
+        plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'MS Gothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
         plt.rcParams['axes.unicode_minus'] = False
         
         # セッションステートの初期化
