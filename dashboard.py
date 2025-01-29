@@ -87,7 +87,13 @@ class ATMDashboard:
                 if atm_files:
                     atm_path = os.path.join(self.base_dir, atm_files[0])
                     print(f"読み込むファイル: {atm_path}")
-                    atm_df = pd.read_csv(atm_path, encoding='cp932')
+                    try:
+                        atm_df = pd.read_csv(atm_path, encoding='utf-8')
+                    except UnicodeDecodeError:
+                        try:
+                            atm_df = pd.read_csv(atm_path, encoding='cp932')
+                        except UnicodeDecodeError:
+                            atm_df = pd.read_csv(atm_path, encoding='shift-jis')
                     
                     # 日付と時刻の変換
                     atm_df['日付'] = pd.to_datetime(atm_df['日付'].astype(str), format='%Y%m%d')
@@ -148,7 +154,13 @@ class ATMDashboard:
                         file_path = os.path.join(self.base_dir, filename)
                         if os.path.exists(file_path):
                             print(f"読み込み中: {file_path}")
-                            df = pd.read_csv(file_path, encoding='cp932')
+                            try:
+                                df = pd.read_csv(file_path, encoding='utf-8')
+                            except UnicodeDecodeError:
+                                try:
+                                    df = pd.read_csv(file_path, encoding='cp932')
+                                except UnicodeDecodeError:
+                                    df = pd.read_csv(file_path, encoding='shift-jis')
                             
                             # 日付の変換
                             if '日付' in df.columns:
