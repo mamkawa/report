@@ -854,9 +854,18 @@ class ATMDashboard:
                 self.branch_codes
             )
             
-            # 期間選択
-            start_date = pd.Timestamp('2023-11-01')
-            end_date = pd.Timestamp('2024-01-31')
+            # 期間選択用の月リストを作成
+            date_range = pd.date_range(start='2023-11-01', end='2024-01-31', freq='MS')
+            available_months = [d.strftime('%Y年%m月') for d in date_range]
+            selected_month = st.selectbox(
+                '月を選択してください',
+                available_months
+            )
+            
+            # 選択された月の開始日と終了日を設定
+            selected_date = datetime.strptime(selected_month, '%Y年%m月')
+            start_date = selected_date.replace(day=1)
+            end_date = (selected_date.replace(day=1) + timedelta(days=32)).replace(day=1) - timedelta(days=1)
             
             if selected_branch in self.cash_flow_data:
                 data = self.cash_flow_data[selected_branch]
@@ -866,10 +875,20 @@ class ATMDashboard:
                 for key in data:
                     df = data[key].copy()  # データのコピーを作成
                     df['日付'] = pd.to_datetime(df['日付'])  # 日付を確実にdatetime型に変換
+                    # 曜日の設定を追加
+                    df['曜日'] = df['日付'].dt.day_name().map({
+                        'Monday': '月',
+                        'Tuesday': '火',
+                        'Wednesday': '水',
+                        'Thursday': '木',
+                        'Friday': '金',
+                        'Saturday': '土',
+                        'Sunday': '日'
+                    })
                     filtered_data[key] = df[
                         (df['日付'] >= start_date) & 
                         (df['日付'] <= end_date)
-                ]
+                    ]
                 
                 # 現金フローの計算
                 st.subheader('現金フロー計算')
@@ -928,7 +947,7 @@ class ATMDashboard:
                     # グラフの描画
                     fig, ax = plt.subplots(figsize=(15, 6))
                     for col in ['①補充', '②預入', '③両替', '④精算', '⑤合計']:
-                        ax.plot(flow_df.index, flow_df[col], label=col, marker='o')
+                        ax.plot(flow_df.index.strftime('%m/%d(%a)'), flow_df[col], label=col, marker='o')
                     
                     ax.set_xlabel('日付')
                     ax.set_ylabel('枚数')
@@ -953,7 +972,7 @@ class ATMDashboard:
                       - 預入枚数_{value}円
                       - 両替枚数_{value}円
                       - 精算枚数_{value}円
-                    - 集計期間: 2023年11月1日 ～ 2024年1月31日
+                    - 集計期間: {selected_month}
                     - 集計方法: 日次の現金フロー（補充、預入、両替、精算）と7日移動平均による予測
                     """)
                     
@@ -972,8 +991,8 @@ class ATMDashboard:
                     
                     # 予測グラフ
                     fig, ax = plt.subplots(figsize=(15, 6))
-                    ax.plot(flow_df.index, flow_df['⑤合計'], label='実績値', marker='o')
-                    ax.plot(flow_df.index, flow_df['予測値'], label='予測値（7日移動平均）', linestyle='--')
+                    ax.plot(flow_df.index.strftime('%m/%d(%a)'), flow_df['⑤合計'], label='実績値', marker='o')
+                    ax.plot(flow_df.index.strftime('%m/%d(%a)'), flow_df['予測値'], label='予測値（7日移動平均）', linestyle='--')
                     
                     ax.set_xlabel('日付')
                     ax.set_ylabel('枚数')
@@ -989,7 +1008,7 @@ class ATMDashboard:
                     st.markdown(f"""
                     **予測データソース情報**:
                     - 入力データ: 上記の現金フロー合計値（⑤合計）
-                    - 予測期間: 2023年11月1日 ～ 2024年1月31日
+                    - 予測期間: {selected_month}
                     - 予測方法: 7日移動平均による時系列予測
                     - 更新頻度: 日次
                     """)
@@ -1051,7 +1070,7 @@ class ATMDashboard:
                     
             except Exception as e2:
                 print(f"デモデータでの実行時エラー: {str(e2)}")
-                st.error("デモデータでの表示にも失敗しました。")
+                st.error("アプリケーションの起動に失敗しました。管理者に連絡してください。")
 
 def main():
     try:
