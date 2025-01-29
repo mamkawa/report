@@ -986,13 +986,46 @@ class ATMDashboard:
                     
                     # 翌日の釣銭予測
                     st.write('### 釣銭予測')
-                    # 移動平均による予測
-                    flow_df['予測値'] = flow_df['⑤合計'].rolling(window=7, min_periods=1).mean()
                     
-                    # 予測グラフ
+                    # 予測値の計算を曜日ベースと7のつく日ベースに変更
+                    flow_df['予測値'] = 0.0  # 予測値の初期化
+                    
+                    # 日付に関する情報を追加
+                    flow_df['曜日'] = flow_df.index.day_name().map({
+                        'Monday': '月',
+                        'Tuesday': '火',
+                        'Wednesday': '水',
+                        'Thursday': '木',
+                        'Friday': '金',
+                        'Saturday': '土',
+                        'Sunday': '日'
+                    })
+                    flow_df['日'] = flow_df.index.day
+                    flow_df['7の日'] = flow_df['日'].apply(lambda x: '7の日' if str(x).endswith('7') else '通常日')
+                    
+                    # 7の日とそれ以外で分けて予測値を計算
+                    for idx in flow_df.index:
+                        current_day = flow_df.loc[idx]
+                        if current_day['7の日'] == '7の日':
+                            # 7の日の場合、他の7の日の平均を使用
+                            seven_days_mean = flow_df[
+                                (flow_df['7の日'] == '7の日') & 
+                                (flow_df.index < idx)
+                            ]['⑤合計'].mean()
+                            flow_df.loc[idx, '予測値'] = seven_days_mean if not pd.isna(seven_days_mean) else current_day['⑤合計']
+                        else:
+                            # 通常日の場合、同じ曜日の平均を使用
+                            weekday_mean = flow_df[
+                                (flow_df['曜日'] == current_day['曜日']) & 
+                                (flow_df['7の日'] == '通常日') & 
+                                (flow_df.index < idx)
+                            ]['⑤合計'].mean()
+                            flow_df.loc[idx, '予測値'] = weekday_mean if not pd.isna(weekday_mean) else current_day['⑤合計']
+                    
+                    # 予測グラフの描画
                     fig, ax = plt.subplots(figsize=(15, 6))
                     ax.plot(flow_df.index.strftime('%m/%d(%a)'), flow_df['⑤合計'], label='実績値', marker='o')
-                    ax.plot(flow_df.index.strftime('%m/%d(%a)'), flow_df['予測値'], label='予測値（7日移動平均）', linestyle='--')
+                    ax.plot(flow_df.index.strftime('%m/%d(%a)'), flow_df['予測値'], label='予測値（曜日・7の日ベース）', linestyle='--')
                     
                     ax.set_xlabel('日付')
                     ax.set_ylabel('枚数')
@@ -1009,7 +1042,9 @@ class ATMDashboard:
                     **予測データソース情報**:
                     - 入力データ: 上記の現金フロー合計値（⑤合計）
                     - 予測期間: {selected_month}
-                    - 予測方法: 7日移動平均による時系列予測
+                    - 予測方法: 
+                      - 7のつく日（7,17,27日）: 過去の7のつく日の平均値
+                      - その他の日: 同じ曜日の過去平均値
                     - 更新頻度: 日次
                     """)
             
