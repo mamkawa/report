@@ -7,8 +7,9 @@ import os
 from datetime import datetime, timedelta
 import japanize_matplotlib
 
-# フォント設定を強化
-plt.rcParams['font.family'] = ['IPAexGothic', 'MS Gothic', 'Yu Gothic']
+# フォント設定を更新
+plt.rcParams['font.family'] = 'IPAexGothic'
+plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'MS Gothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.size'] = 12
 plt.rcParams['axes.labelsize'] = 12
@@ -1055,8 +1056,9 @@ def main():
             layout='wide'
         )
         
-        # グローバルなフォント設定
+        # グローバルなフォント設定を更新
         plt.rcParams['font.family'] = 'IPAexGothic'
+        plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'MS Gothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
         plt.rcParams['axes.unicode_minus'] = False
         
         # セッションステートの初期化

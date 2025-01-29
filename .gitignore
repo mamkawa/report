@@ -50,6 +50,13 @@ Thumbs.db
 .coverage
 htmlcov/
 
+# Streamlit
+.streamlit/
+
+# その他
+*.bak
+*.tmp
+
 # 実データ（必要に応じて）
 /data/real_data/
 *.csv
