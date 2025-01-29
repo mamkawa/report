@@ -8,8 +8,8 @@ from datetime import datetime, timedelta
 import japanize_matplotlib
 
 # フォント設定を更新
-plt.rcParams['font.family'] = 'IPAexGothic'
-plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'MS Gothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
+plt.rcParams['font.family'] = 'MS Gothic'  # IPAexGothicをMS Gothicに変更
+plt.rcParams['font.sans-serif'] = ['MS Gothic', 'IPAexGothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
 plt.rcParams['axes.unicode_minus'] = False
 plt.rcParams['font.size'] = 12
 plt.rcParams['axes.labelsize'] = 12
@@ -212,7 +212,7 @@ class ATMDashboard:
             self.create_demo_cash_flow_data()
 
     def create_demo_cash_flow_data(self):
-        """デモの現金フローデータを作成"""
+        """現金フローデモデータの作成"""
         print("現金フローデモデータを作成中...")
         
         for code in self.branch_codes:
@@ -220,37 +220,43 @@ class ATMDashboard:
             dates = pd.date_range(start='2023-11-01', end='2024-01-31')
             n_rows = len(dates)
             
-            # 基本データフレームの作成
-            base_df = pd.DataFrame({'日付': dates})
+            # 各データ種別のデモデータを作成
+            data_types = {
+                'pos_withdrawal': '元金補充POSレジ出金',
+                'bank_deposit': '銀行預入出金',
+                'bank_exchange': '銀行両替金入金',
+                'atm_settlement': 'ATM精算POSレジ'
+            }
             
-            # 各種データの作成
-            data_frames = {}
+            cash_flow_data = {}
+            for key, label in data_types.items():
+                df = pd.DataFrame({
+                    '日付': dates
+                })
+                
+                # 金種ごとのデータを生成
+                for bill in self.bills.keys():
+                    col_name = f'{"出金" if key == "pos_withdrawal" else "預入" if key == "bank_deposit" else "両替" if key == "bank_exchange" else "精算"}枚数_{bill}円'
+                    # より現実的な分布のデータを生成
+                    if bill == '10000':
+                        df[col_name] = np.random.poisson(30, n_rows)
+                    elif bill == '5000':
+                        df[col_name] = np.random.poisson(20, n_rows)
+                    else:
+                        df[col_name] = np.random.poisson(10, n_rows)
+                
+                for coin in self.coins.keys():
+                    col_name = f'{"出金" if key == "pos_withdrawal" else "預入" if key == "bank_deposit" else "両替" if key == "bank_exchange" else "精算"}枚数_{coin}円'
+                    if coin in ['100', '500']:
+                        df[col_name] = np.random.poisson(100, n_rows)
+                    elif coin in ['50', '10']:
+                        df[col_name] = np.random.poisson(50, n_rows)
+                    else:
+                        df[col_name] = np.random.poisson(20, n_rows)
+                
+                cash_flow_data[key] = df
             
-            # 元金補充POSレジ出金データ
-            pos_withdrawal = base_df.copy()
-            for value in list(self.bills.keys()) + list(self.coins.keys()):
-                pos_withdrawal[f'出金枚数_{value}円'] = np.random.poisson(10, n_rows)
-            data_frames['pos_withdrawal'] = pos_withdrawal
-            
-            # 銀行預入出金データ
-            bank_deposit = base_df.copy()
-            for value in list(self.bills.keys()) + list(self.coins.keys()):
-                bank_deposit[f'預入枚数_{value}円'] = np.random.poisson(5, n_rows)
-            data_frames['bank_deposit'] = bank_deposit
-            
-            # 銀行両替金入金データ
-            bank_exchange = base_df.copy()
-            for value in list(self.bills.keys()) + list(self.coins.keys()):
-                bank_exchange[f'両替枚数_{value}円'] = np.random.poisson(3, n_rows)
-            data_frames['bank_exchange'] = bank_exchange
-            
-            # ATM精算POSレジデータ
-            atm_settlement = base_df.copy()
-            for value in list(self.bills.keys()) + list(self.coins.keys()):
-                atm_settlement[f'精算枚数_{value}円'] = np.random.poisson(8, n_rows)
-            data_frames['atm_settlement'] = atm_settlement
-            
-            self.cash_flow_data[code] = data_frames
+            self.cash_flow_data[code] = cash_flow_data
             print(f"支店{code}の現金フローデモデータを作成しました")
 
     def setup_page(self):
@@ -366,13 +372,13 @@ class ATMDashboard:
                     st.pyplot(fig)
                     plt.close()
                     
-                    # データソースの説明
+                    # データソースの説明を追加
                     st.markdown(f"""
-                    **データソース**:
-                    - 対象データ: ATM現金入金取引データ
+                    **データソース情報**:
+                    - ファイル名: {selected_branch}_ATM精算POSレジ自動釣銭機確定データ.csv
+                    - 対象列: 時刻, ATM現金入金計金額
                     - 集計期間: {selected_month.strftime('%Y年%m月')}
-                    - 集計項目: ATM現金入金取引数
-                    - 集計方法: 時間帯別の取引件数
+                    - 集計方法: 時間帯（0-23時）ごとの現金入金取引件数
                     """)
                 
                 with col_right:
@@ -398,13 +404,13 @@ class ATMDashboard:
                     st.pyplot(fig)
                     plt.close()
                     
-                    # データソースの説明
+                    # データソースの説明を追加
                     st.markdown(f"""
-                    **データソース**:
-                    - 対象データ: ATM現金入金取引データ
+                    **データソース情報**:
+                    - ファイル名: {selected_branch}_ATM精算POSレジ自動釣銭機確定データ.csv
+                    - 対象列: 日付, 在高合計金額
                     - 集計期間: {selected_month.strftime('%Y年%m月')}
-                    - 集計項目: 在高合計金額
-                    - 集計方法: 日別平均在高金額（百万円単位）
+                    - 集計方法: 日別の平均在高金額（百万円単位）
                     """)
         
         except Exception as e:
@@ -493,13 +499,13 @@ class ATMDashboard:
                 st.pyplot(fig)
                 plt.close()
                 
-                # データソースの説明
+                # データソースの説明を追加
                 st.markdown(f"""
-                **データソース**:
-                - 対象データ: ATM現金入金取引データ
-                - 集計期間: {selected_month.strftime('%Y年%m月')}のデータ
-                - 集計項目: 各金種の入金枚数
-                - 集計方法: 日付ごとの平均入金枚数
+                **データソース情報**:
+                - ファイル名: {selected_branch}_ATM精算POSレジ自動釣銭機確定データ.csv
+                - 対象列: ATM現金（手入力以外）入金（各金種）枚数
+                - 集計期間: {selected_month.strftime('%Y年%m月')}
+                - 集計方法: 日別・金種別の平均入金枚数
                 """)
                 
                 # 時間帯別ヒートマップ
@@ -526,17 +532,13 @@ class ATMDashboard:
                     st.pyplot(fig)
                     plt.close()
                     
-                    # ヒートマップのデータソース説明
+                    # ヒートマップのデータソース説明を追加
                     st.markdown(f"""
-                    **データソース（{labels[col]}の時間帯別平均取扱枚数）**:
-                    - 対象データ: ATM現金入金取引データ
-                    - 集計期間: {selected_month.strftime('%Y年%m月')}のデータ
-                    - 集計項目: {labels[col]}の入金枚数
-                    - 集計方法: 
-                        - 時間帯（0-23時）ごとの平均入金枚数
-                        - 日付別・時間帯別の集計値
-                        - 小数点以下1桁まで表示
-                    - 表示形式: ヒートマップ（色が濃いほど取扱枚数が多いことを示す）
+                    **データソース情報**:
+                    - ファイル名: {selected_branch}_ATM精算POSレジ自動釣銭機確定データ.csv
+                    - 対象列: ATM現金（手入力以外）入金（各金種）枚数, 時刻
+                    - 集計期間: {selected_month.strftime('%Y年%m月')}
+                    - 集計方法: 時間帯（0-23時）・日付別の平均入金枚数
                     """)
         
         except Exception as e:
@@ -611,10 +613,11 @@ class ATMDashboard:
                 st.pyplot(fig)
                 plt.close()
                 
-                # データソースの説明
+                # データソースの説明を追加
                 st.markdown(f"""
-                **データソース（取引件数）**:
-                - 対象データ: ATM現金入金取引データ
+                **データソース情報**:
+                - ファイル名: 各支店の_ATM精算POSレジ自動釣銭機確定データ.csv
+                - 対象列: ATM現金入金計金額
                 - 集計期間: {selected_month.strftime('%Y年%m月')}
                 - 集計方法: 支店ごとの総取引件数
                 """)
@@ -658,10 +661,11 @@ class ATMDashboard:
                 st.pyplot(fig)
                 plt.close()
                 
-                # データソースの説明
+                # データソースの説明を追加
                 st.markdown(f"""
-                **データソース（平均在高金額）**:
-                - 対象データ: ATM現金入金取引データ
+                **データソース情報**:
+                - ファイル名: 各支店の_ATM精算POSレジ自動釣銭機確定データ.csv
+                - 対象列: 在高合計金額
                 - 集計期間: {selected_month.strftime('%Y年%m月')}
                 - 集計方法: 支店ごとの平均在高金額（百万円単位）
                 """)
@@ -770,17 +774,11 @@ class ATMDashboard:
 
             # 硬貨の推移グラフのデータソース説明
             st.markdown("""
-            **データソース（硬貨種別の推移）**:
-            - 対象データ: ATM現金入金取引データ
-            - 集計期間: 選択された月のデータ
-            - 集計項目: 
-                - 500円玉の入金枚数
-                - 100円玉の入金枚数
-                - 50円玉の入金枚数
-                - 10円玉の入金枚数
-                - 5円玉の入金枚数
-                - 1円玉の入金枚数
-            - 集計方法: 日付ごとの各硬貨種別の平均入金枚数
+            **データソース情報**:
+            - ファイル名: {selected_branch}_ATM精算POSレジ自動釣銭機確定データ.csv
+            - 対象列: ATM現金（手入力以外）入金（各金種）枚数
+            - 集計期間: {selected_month.strftime('%Y年%m月')}
+            - 集計方法: 日別・金種別の平均入金枚数
             """)
             
             # 硬貨の時間帯別ヒートマップ
@@ -790,34 +788,6 @@ class ATMDashboard:
                 if col in df.columns:
                     # 時刻を時間に変換
                     df['時間'] = pd.to_datetime(df['時刻'].astype(str)).dt.hour
-                    pivot_data = df.pivot_table(
-                        values=col,
-                        index='時間',
-                        columns='date_str',
-                        aggfunc='mean'
-                    ).round(1)
-                    
-                    fig, ax = plt.subplots(figsize=(15, 8))
-                    sns.heatmap(pivot_data, cmap='YlOrRd', annot=True, fmt='.1f',
-                              cbar_kws={'label': '平均枚数'})
-                    plt.title(f'{coin}円玉の時間帯別平均取扱枚数')
-                    plt.xlabel('日付')
-                    plt.ylabel('時間帯')
-                    plt.tight_layout()
-                    st.pyplot(fig)
-
-                    # 各硬貨のヒートマップのデータソース説明
-                    st.markdown(f"""
-                    **データソース（{coin}円玉の時間帯別平均取扱枚数）**:
-                    - 対象データ: ATM現金入金取引データ
-                    - 集計期間: 選択された月のデータ
-                    - 集計項目: {coin}円玉の入金枚数
-                    - 集計方法: 
-                        - 時間帯（0-23時）ごとの平均入金枚数
-                        - 日付別・時間帯別の集計値
-                        - 小数点以下1桁まで表示
-                    - 表示形式: ヒートマップ（色が濃いほど取扱枚数が多いことを示す）
-                    """)
 
     def create_demo_data(self):
         """デモデータの作成"""
@@ -899,7 +869,7 @@ class ATMDashboard:
                     filtered_data[key] = df[
                         (df['日付'] >= start_date) & 
                         (df['日付'] <= end_date)
-                    ]
+                ]
                 
                 # 現金フローの計算
                 st.subheader('現金フロー計算')
@@ -970,6 +940,23 @@ class ATMDashboard:
                     st.pyplot(fig)
                     plt.close()
                     
+                    # データソース情報を追加
+                    st.markdown(f"""
+                    **データソース情報**:
+                    - ファイル名:
+                      - {selected_branch}_元金補充POSレジ出金確定データ.csv
+                      - {selected_branch}_銀行預入出金確定データ.csv
+                      - {selected_branch}_銀行両替金入金確定データ.csv
+                      - {selected_branch}_ATM精算POSレジ自動釣銭機確定データ.csv
+                    - 対象列:
+                      - 出金枚数_{value}円
+                      - 預入枚数_{value}円
+                      - 両替枚数_{value}円
+                      - 精算枚数_{value}円
+                    - 集計期間: 2023年11月1日 ～ 2024年1月31日
+                    - 集計方法: 日次の現金フロー（補充、預入、両替、精算）と7日移動平均による予測
+                    """)
+                    
                     # データテーブルの表示
                     st.write('日次データ')
                     st.dataframe(flow_df)
@@ -997,6 +984,15 @@ class ATMDashboard:
                     plt.tight_layout()
                     st.pyplot(fig)
                     plt.close()
+                    
+                    # 予測グラフのデータソース情報を追加
+                    st.markdown(f"""
+                    **予測データソース情報**:
+                    - 入力データ: 上記の現金フロー合計値（⑤合計）
+                    - 予測期間: 2023年11月1日 ～ 2024年1月31日
+                    - 予測方法: 7日移動平均による時系列予測
+                    - 更新頻度: 日次
+                    """)
             
             else:
                 st.warning(f"支店{selected_branch}のデータが見つかりません。")
@@ -1069,8 +1065,8 @@ def main():
         )
         
         # グローバルなフォント設定を更新
-        plt.rcParams['font.family'] = 'IPAexGothic'
-        plt.rcParams['font.sans-serif'] = ['IPAexGothic', 'MS Gothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
+        plt.rcParams['font.family'] = 'MS Gothic'
+        plt.rcParams['font.sans-serif'] = ['MS Gothic', 'IPAexGothic', 'Hiragino Maru Gothic Pro', 'Yu Gothic']
         plt.rcParams['axes.unicode_minus'] = False
         
         # セッションステートの初期化
